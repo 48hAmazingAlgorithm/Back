@@ -11,12 +11,21 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
-	//"go.mongodb.org/mongo-driver/v2/mongo/readpref"
 )
 
 type Client struct {
 	NumClient string `bson:"_id,omitempty" json:"numero_client"`
 	NomClient string `bson:"nom_client" json:"nom_client"`
+}
+
+type Individu struct {
+	IDIndividu         string    `bson:"_id,omitempty" json:"id_individu"`
+	Nom                string    `bson:"nom" json:"nom"`
+	Prenom             string    `bson:"prenom" json:"prenom"`
+	DateNaissance      time.Time `bson:"date_naissance" json:"date_naissance"`
+	DateFinValiditeCNI time.Time `bson:"date_fin_validite_CNI" json:"date_fin_validite_CNI"`
+	NumeroCNI          string    `bson:"numero_CNI" json:"numero_CNI"`
+	NumeroClient       string    `bson:"numero_client" json:"numero_client"`
 }
 
 var client *mongo.Client
@@ -76,12 +85,51 @@ func PostClient(c *gin.Context) {
 	})
 }
 
+func GetIndividus(c *gin.Context) {
+	collection := client.Database("Challenge48h").Collection("Individu")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	cursor, _ := collection.Find(ctx, bson.M{})
+	defer cursor.Close(ctx)
+	var individus []Individu
+	_ = cursor.All(ctx, &individus)
+	c.JSON(http.StatusOK, gin.H{
+		"message": individus,
+	})
+}
+
+func PostIndividu(c *gin.Context) {
+	collection := client.Database("Challenge48h").Collection("Individu")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var individu Individu
+	if err := c.ShouldBindJSON(&individu); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Données invalides",
+		})
+		return
+	}
+	result, err := collection.InsertOne(ctx, individu)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Erreur lors de l'insertion en base",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"message": result,
+	})
+}
+
 func main() {
 	connectMongoDB()
 
 	router := gin.Default()
 
-	router.GET("/get", GetClient)
-	router.POST("/post", PostClient)
+	router.GET("/getClient", GetClient)
+	router.POST("/postClient", PostClient)
+	router.GET("/getIndividus", GetIndividus)
+	router.POST("/postIndividu", PostIndividu)
+
 	router.Run(":8080")
 }
