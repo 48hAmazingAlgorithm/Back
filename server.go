@@ -27,12 +27,12 @@ func connectMongoDB() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	client, err = mongo.Connect(clientOptions)
+	Mongoclient, err = mongo.Connect(clientOptions)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = client.Ping(ctx, nil)
+	err = Mongoclient.Ping(ctx, nil)
 	if err != nil {
 		log.Fatal("Impossible de se connecter à MongoDB")
 	}
