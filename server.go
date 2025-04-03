@@ -28,6 +28,8 @@ type Individu struct {
 	DateFinValiditeCNI time.Time `bson:"date_fin_validite_CNI" json:"date_fin_validite_CNI"`
 	NumeroCNI          string    `bson:"numero_CNI" json:"numero_CNI"`
 	NumeroClient       string    `bson:"numero_client" json:"numero_client"`
+	PhotoID            string    `bson:"photo_id"`
+	DatePhoto          time.Time `bson:"date_photo"`
 }
 
 var Mongoclient *mongo.Client
