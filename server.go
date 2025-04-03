@@ -3,12 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"image"
 	"log"
 	"net/http"
 	"time"
 
-	"github.com/fogleman/gg"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -136,7 +134,7 @@ func PostIndividu(c *gin.Context) {
 	})
 }
 
-func addFilligrane(img image.Image) {
+/*func addFilligrane(img image.Image) {
 	context := gg.NewContextForImage(img)
 
 	imgWidth := img.Bounds().Max.X
@@ -160,15 +158,15 @@ func addFilligrane(img image.Image) {
 	if err != nil {
 		log.Fatal("Erreur lors de la sauvegarde de l'image: ", err)
 	}
-}
+}*/
 
 func main() {
-	imgPath := "./image.png"
+	/*imgPath := "./image.png"
 	img, err := gg.LoadImage(imgPath)
 	if err != nil {
 		log.Fatal("Erreur lors du chargement de l'image: ", err)
 	}
-	addFilligrane(img)
+	addFilligrane(img)*/
 	connectMongoDB()
 	router := gin.Default()
 
