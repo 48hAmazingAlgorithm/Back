@@ -19,7 +19,7 @@ type Client struct {
 }
 
 
-var client *mongo.Client
+var Mongoclient *mongo.Client
 
 func connectMongoDB() {
 	var err error
@@ -41,7 +41,7 @@ func connectMongoDB() {
 }
 
 func GetClient(c *gin.Context) {
-	collection := client.Database("Challenge48h").Collection("Client")
+	collection := Mongoclient.Database("Challenge48h").Collection("Client")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel();
 	cursor, _ := collection.Find(ctx, bson.M{})
@@ -54,7 +54,7 @@ func GetClient(c *gin.Context) {
 }
 
 func PostClient(c *gin.Context) {
-	collection := client.Database("Challenge48h").Collection("Client")
+	collection := Mongoclient.Database("Challenge48h").Collection("Client")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel();
 	var client Client
