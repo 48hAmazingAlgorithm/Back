@@ -1,0 +1,14 @@
+Table Client {
+  numero_client int [pk]
+  nom_client varchar
+}
+
+Table Individu {
+  id_individu int [pk]
+  nom varchar
+  prenom varchar
+  date_naissance date
+  date_fin_validite_CNI date
+  numero_CNI varchar
+  numero_client int [ref: > Client.numero_client]
+}
