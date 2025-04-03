@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"image"
 	"log"
 	"net/http"
 	"time"
 
+	"github.com/fogleman/gg"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -18,17 +20,7 @@ type Client struct {
 	NomClient string `bson:"nom_client" json:"nom_client"`
 }
 
-type Individu struct {
-	IDIndividu         string    `bson:"_id,omitempty" json:"id_individu"`
-	Nom                string    `bson:"nom" json:"nom"`
-	Prenom             string    `bson:"prenom" json:"prenom"`
-	DateNaissance      time.Time `bson:"date_naissance" json:"date_naissance"`
-	DateFinValiditeCNI time.Time `bson:"date_fin_validite_CNI" json:"date_fin_validite_CNI"`
-	NumeroCNI          string    `bson:"numero_CNI" json:"numero_CNI"`
-	NumeroClient       string    `bson:"numero_client" json:"numero_client"`
-}
-
-var client *mongo.Client
+var Mongoclient *mongo.Client
 
 func connectMongoDB() {
 	var err error
@@ -36,12 +28,12 @@ func connectMongoDB() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	client, err = mongo.Connect(clientOptions)
+	Mongoclient, err = mongo.Connect(clientOptions)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = client.Ping(ctx, nil)
+	err = Mongoclient.Ping(ctx, nil)
 	if err != nil {
 		log.Fatal("Impossible de se connecter à MongoDB")
 	}
@@ -50,7 +42,7 @@ func connectMongoDB() {
 }
 
 func GetClient(c *gin.Context) {
-	collection := client.Database("Challenge48h").Collection("Client")
+	collection := Mongoclient.Database("Challenge48h").Collection("Client")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	cursor, _ := collection.Find(ctx, bson.M{})
@@ -63,7 +55,7 @@ func GetClient(c *gin.Context) {
 }
 
 func PostClient(c *gin.Context) {
-	collection := client.Database("Challenge48h").Collection("Client")
+	collection := Mongoclient.Database("Challenge48h").Collection("Client")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	var client Client
@@ -85,56 +77,40 @@ func PostClient(c *gin.Context) {
 	})
 }
 
-func GetIndividus(c *gin.Context) {
-	collection := client.Database("Challenge48h").Collection("Individu")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	cursor, _ := collection.Find(ctx, bson.M{})
-	defer cursor.Close(ctx)
-	var individus []Individu
-	_ = cursor.All(ctx, &individus)
-	c.JSON(http.StatusOK, gin.H{
-		"message": individus,
-	})
-}
+func addFilligrane(img image.Image) {
+	context := gg.NewContextForImage(img)
 
-func PostIndividu(c *gin.Context) {
-	collection := client.Database("Challenge48h").Collection("Individu")
-	collectionC := client.Database("Challenge48h").Collection("Client")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	var individu Individu
-	if err := c.ShouldBindJSON(&individu); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Données invalides",
-		})
-		return
-	}
-
-	var existingClient Client
-	err := collectionC.FindOne(ctx, bson.M{"_id": individu.NumeroClient}).Decode(&existingClient)
+	imgWidth := img.Bounds().Max.X
+	imgHeight := img.Bounds().Max.Y
+	context.SetRGBA(0, 0, 0, 1)
+	fontSize := float64(imgHeight) * 0.1
+	err := context.LoadFontFace("c:/Windows/Fonts/Amiri-Bold.ttf", fontSize)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Le client n'existe pas",
-		})
-		return
+		log.Fatal("Erreur lors du chargement de la police: ", err)
 	}
+	text := "CHALLENGE 48H YNOV"
+	centerX := float64(imgWidth) / 2
+	centerY := float64(imgHeight) / 2
+	angle := 45.0
 
-	result, err := collection.InsertOne(ctx, individu)
+	context.RotateAbout(gg.Radians(angle), centerX, centerY)
+
+	context.DrawStringAnchored(text, centerX, centerY, 0.5, 0.5)
+
+	err = context.SavePNG("./imageFinale.png")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Erreur lors de l'insertion en base",
-		})
-		return
+		log.Fatal("Erreur lors de la sauvegarde de l'image: ", err)
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"message": result,
-	})
 }
 
 func main() {
+	imgPath := "./image.png"
+	img, err := gg.LoadImage(imgPath)
+	if err != nil {
+		log.Fatal("Erreur lors du chargement de l'image: ", err)
+	}
+	addFilligrane(img)
 	connectMongoDB()
-
 	router := gin.Default()
 
 	router.GET("/getClient", GetClient)
