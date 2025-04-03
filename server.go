@@ -1,16 +1,34 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
+	"image"
+	"image/jpeg"
+	"image/png"
+	"io"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
+	"github.com/fogleman/gg"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/joho/godotenv"
+
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/gridfs"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Client struct {
@@ -31,6 +49,9 @@ type Individu struct {
 }
 
 var Mongoclient *mongo.Client
+var bucket *gridfs.Bucket
+var err = godotenv.Load()
+var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))
 
 func connectMongoDB() {
 	var err error
@@ -38,16 +59,15 @@ func connectMongoDB() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	Mongoclient, err = mongo.Connect(clientOptions)
+	Mongoclient, err = mongo.Connect(context.Background(),clientOptions)
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	err = Mongoclient.Ping(ctx, nil)
 	if err != nil {
 		log.Fatal("Impossible de se connecter à MongoDB")
 	}
-
+	bucket, _ = gridfs.NewBucket(Mongoclient.Database("Challenge48h"))
 	fmt.Println("Connexion MongoDB réussie")
 }
 
@@ -130,11 +150,75 @@ func PostIndividu(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
+		"message": result.InsertedID,
+	})
+}
+
+func PostPhoto(c *gin.Context) {
+	file, header, err := c.Request.FormFile("photo")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Aucune photo envoyé"})
+		return
+	}
+	fileExt := strings.ToLower(filepath.Ext(header.Filename))
+	var img image.Image
+	if fileExt == ".png" {
+		img, err = png.Decode(file)
+	} else if fileExt == ".jpg" || fileExt == ".jpeg" {
+		img, err = jpeg.Decode(file)
+	} else {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format non supporté (JPG, PNG uniquement)"})
+		return
+	}
+	img = addFilligrane(img)
+	var buf bytes.Buffer
+	if fileExt == ".png" {
+		err = png.Encode(&buf, img)
+	} else {
+		err = jpeg.Encode(&buf, img, &jpeg.Options{Quality: 90})
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erreur d'encodage de l'image"})
+		return
+	}
+
+
+	collection := Mongoclient.Database("Challenge48h").Collection("Individu")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var idIndividu struct {
+		Id string `json:"id_individu"`
+	}
+	if err := c.ShouldBindJSON(&idIndividu); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Données invalides",
+		})
+		return
+	}
+	var individu Individu
+	err = collection.FindOne(ctx, bson.M{"_id" : idIndividu.Id}).Decode(&individu)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "L'individu n'existe pas",
+		})
+		return
+	}
+
+	newId, err :=uploadFile(buf)
+	newId, _ = encryptID(newId)
+	individu.PhotoID = newId
+	individu.DatePhoto = time.Now()
+	result, err := collection.UpdateOne(ctx,bson.M{"_id" : idIndividu.Id},individu)
+	if err != nil {
+		log.Fatal("probleme lors de l'update",err)
+		return 
+	}
+	c.JSON(http.StatusOK, gin.H{
 		"message": result,
 	})
 }
 
-/*func addFilligrane(img image.Image) {
+func addFilligrane(img image.Image) image.Image{
 	context := gg.NewContextForImage(img)
 
 	imgWidth := img.Bounds().Max.X
@@ -158,15 +242,38 @@ func PostIndividu(c *gin.Context) {
 	if err != nil {
 		log.Fatal("Erreur lors de la sauvegarde de l'image: ", err)
 	}
-}*/
+	return context.Image()
+}
+
+func uploadFile(buf bytes.Buffer) (string, error) {
+	name := uuid.New().String()
+	uploadStream, _ := bucket.OpenUploadStream(name)
+	defer uploadStream.Close()
+	uploadStream.Write(buf.Bytes())
+	return uploadStream.FileID.(primitive.ObjectID).Hex(), nil
+}
+
+func encryptID(text string) (string, error) {
+	block, _ := aes.NewCipher(encryptionKey)
+	nonce := make([]byte,12)
+	io.ReadFull(rand.Reader, nonce)
+	aesGCM, _ :=cipher.NewGCM(block)
+	ciphertext := aesGCM.Seal(nil, nonce, []byte(text), nil)
+	return base64.StdEncoding.EncodeToString(append(nonce, ciphertext...)), nil
+}
+
+func decryptID(text string) (string, error) {
+	data, _ := base64.StdEncoding.DecodeString(text)
+	nonce := data[:12]         	
+	ciphertext := data[12:]    
+	block, _ := aes.NewCipher(encryptionKey)
+	aesGCM, _ := cipher.NewGCM(block)
+	plainText, _ := aesGCM.Open(nil, nonce, ciphertext, nil)
+	return string(plainText), nil
+}
+
 
 func main() {
-	/*imgPath := "./image.png"
-	img, err := gg.LoadImage(imgPath)
-	if err != nil {
-		log.Fatal("Erreur lors du chargement de l'image: ", err)
-	}
-	addFilligrane(img)*/
 	connectMongoDB()
 	router := gin.Default()
 
