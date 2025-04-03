@@ -100,6 +100,7 @@ func GetIndividus(c *gin.Context) {
 
 func PostIndividu(c *gin.Context) {
 	collection := client.Database("Challenge48h").Collection("Individu")
+	collectionC := client.Database("Challenge48h").Collection("Client")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	var individu Individu
@@ -109,6 +110,16 @@ func PostIndividu(c *gin.Context) {
 		})
 		return
 	}
+
+	var existingClient Client
+	err := collectionC.FindOne(ctx, bson.M{"_id": individu.NumeroClient}).Decode(&existingClient)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Le client n'existe pas",
+		})
+		return
+	}
+
 	result, err := collection.InsertOne(ctx, individu)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
