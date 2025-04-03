@@ -3,9 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"image"
+	"log"
 	"net/http"
 	"time"
-	"log"
+
+	"github.com/fogleman/gg"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -76,9 +79,40 @@ func PostClient(c *gin.Context) {
 	})
 }
 
-func main() {
-	connectMongoDB()
+func addFilligrane(img image.Image) {
+	context := gg.NewContextForImage(img)
+    
+    imgWidth := img.Bounds().Max.X
+    imgHeight := img.Bounds().Max.Y
+    context.SetRGBA(0, 0, 0, 1) 
+    fontSize := float64(imgHeight) * 0.1 
+    err := context.LoadFontFace("c:/Windows/Fonts/Amiri-Bold.ttf", fontSize)
+    if err != nil {
+        log.Fatal("Erreur lors du chargement de la police: ", err)
+    }
+    text := "CHALLENGE 48H YNOV"
+    centerX := float64(imgWidth) / 2
+    centerY := float64(imgHeight) / 2
+    angle := 45.0 
+    
+    context.RotateAbout(gg.Radians(angle), centerX, centerY)
+    
+    context.DrawStringAnchored(text, centerX, centerY, 0.5, 0.5)
+    
+    err = context.SavePNG("./imageFinale.png")
+    if err != nil {
+        log.Fatal("Erreur lors de la sauvegarde de l'image: ", err)
+    }
+}
 
+func main() {    
+	imgPath := "./image.png"
+    img, err := gg.LoadImage(imgPath)
+    if err != nil {
+        log.Fatal("Erreur lors du chargement de l'image: ", err)
+    }
+	addFilligrane(img)
+	connectMongoDB()
 	router := gin.Default();
 
 	router.GET("/get", GetClient)
