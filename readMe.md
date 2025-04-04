@@ -50,6 +50,7 @@ Le serveur devrait maintenant être en cours d'exécution à l'adresse http://lo
 
 ### Structure du projet
 Voici un aperçu de la structure des répertoires et fichiers principaux du projet :
+```
 Back/
 ├── routes/             # Contient les fichiers de définition des routes de l'API
 │   └── ...             # Fichiers de routes
@@ -58,12 +59,14 @@ Back/
 ├── go.sum              # Sommes de contrôle des modules Go
 ├── readMe.md           # Documentation du projet
 └── server.go           # Point d'entrée principal de l'application
+```
 
 ### Routes de l'API
 L'API expose plusieurs endpoints pour gérer les ressources. Voici quelques exemples :​
 
-#### GET /getClient 
-    Récupère les clients
-#### GET /getIndividus
-    Récupère les individus
+### Get 
+```
+/getClients -> récupère les clients
+/getIndividus -> récupère les individus
+```
 
