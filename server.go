@@ -20,7 +20,7 @@ func main() {
 
 	router.GET("/getClient", routes.GetClient)
 	router.POST("/postClient", routes.PostClient)
-	router.GET("/getIndividus", routes.GetIndividus)
+	router.GET("/getIndividus", routes.GetIndividu)
 	router.POST("/postIndividu", routes.PostIndividu)
 	router.GET("/getPhotoRecto/:client_id", routes.GetPhotoRecto)
 	router.GET("/getPhotoVerso/:client_id", routes.GetPhotoVerso)

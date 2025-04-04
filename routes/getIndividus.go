@@ -1,23 +1,31 @@
 package routes
 
-import(
-	"time"
+import (
 	"context"
+	"log"
+	"time"
+
 	"github.com/gin-gonic/gin"
 
 	"net/http"
+
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func GetIndividus(c *gin.Context) {
+func GetIndividu(c *gin.Context) {
 	collection := Mongoclient.Database("Challenge48h").Collection("Individu")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	cursor, _ := collection.Find(ctx, bson.M{})
+	cursor, err := collection.Find(ctx, bson.M{})
+	if err != nil {
+		log.Println(err)
+	}
 	defer cursor.Close(ctx)
 	var individus []Individu
-	_ = cursor.All(ctx, &individus)
-	c.JSON(http.StatusOK, gin.H{
-		"message": individus,
-	})
+	err = cursor.All(ctx, &individus)
+	if err != nil {
+		log.Println(err)
+	}
+	log.Println(individus)
+	c.JSON(http.StatusOK, individus)
 }

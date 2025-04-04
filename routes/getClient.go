@@ -18,7 +18,5 @@ func GetClient(c *gin.Context) {
 	defer cursor.Close(ctx)
 	var clients []Client
 	_ = cursor.All(ctx, &clients)
-	c.JSON(http.StatusOK, gin.H{
-		"message": clients,
-	})
+	c.JSON(http.StatusOK, clients)
 }
