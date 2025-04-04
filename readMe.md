@@ -11,9 +11,9 @@ Ce dépôt contient le code source de l'API développée pour le projet 48hAmazi
 
 ### [Utilisation](#utilisation)
 
-### [Structure](#Structure du projet)
+### [Structure](#StructureduProjet)
 
-### [Routes](#Routes de l'API)
+### [Routes](#Routesdel'API)
 
 
 ### Prérequis
