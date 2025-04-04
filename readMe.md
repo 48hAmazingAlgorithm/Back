@@ -11,9 +11,9 @@ Ce dépôt contient le code source de l'API développée pour le projet 48hAmazi
 
 ### [Utilisation](#utilisation)
 
-### [Structure](#StructureduProjet)
+### [Structure](#Structure)
 
-### [Routes](#Routesdel'API)
+### [Routes](#Routes)
 
 
 ### Prérequis
@@ -48,7 +48,7 @@ go run server.go
 ```
 Le serveur devrait maintenant être en cours d'exécution à l'adresse http://localhost:8080.​
 
-### Structure du projet
+### Structure
 Voici un aperçu de la structure des répertoires et fichiers principaux du projet :
 ```
 Back/
@@ -61,7 +61,7 @@ Back/
 └── server.go           # Point d'entrée principal de l'application
 ```
 
-### Routes de l'API
+### Routes
 L'API expose plusieurs endpoints pour gérer les ressources. Voici quelques exemples :​
 
 ### Get 
