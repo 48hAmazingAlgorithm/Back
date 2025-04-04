@@ -3,13 +3,11 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
+
 	"encoding/base64"
 	"fmt"
 	"image"
-	"io"
+	"image/png"
 	"log"
 	"net/http"
 	"os"
@@ -19,13 +17,14 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/joho/godotenv"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/gridfs"
 	"go.mongodb.org/mongo-driver/mongo/options"
+
+	routes "challenge/routes"
 )
 
 type Client struct {
@@ -46,8 +45,7 @@ type Individu struct {
 
 var Mongoclient *mongo.Client
 var bucket *gridfs.Bucket
-var err = godotenv.Load()
-var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))
+
 
 func connectMongoDB() {
 	var err error
@@ -63,7 +61,7 @@ func connectMongoDB() {
 	if err != nil {
 		log.Fatal("Impossible de se connecter à MongoDB")
 	}
-	bucket, _ = gridfs.NewBucket(Mongoclient.Database("Challenge48h"))
+	bucket, _ = gridfs.NewBucket(Mongoclient.Database("Challenge48h"), options.GridFSBucket().SetName("images"))
 	fmt.Println("Connexion MongoDB réussie")
 }
 
@@ -118,7 +116,7 @@ func GetIndividus(c *gin.Context) {
 
 func PostIndividu(c *gin.Context) {
 	collection := Mongoclient.Database("Challenge48h").Collection("Individu")
-	//collectionC := Mongoclient.Database("Challenge48h").Collection("Client")
+	collectionC := Mongoclient.Database("Challenge48h").Collection("Client")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	var individu Individu
@@ -129,8 +127,8 @@ func PostIndividu(c *gin.Context) {
 		return
 	}
 
-	//var existingClient Client
-	//err := collectionC.FindOne(ctx, bson.M{"_id": individu.NumeroClient}).Decode(&existingClient)
+	var existingClient Client
+	err := collectionC.FindOne(ctx, bson.M{"_id": individu.IDIndividu}).Decode(&existingClient)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Le client n'existe pas",
@@ -167,15 +165,15 @@ func PostPhoto(c *gin.Context) {
 		return
 	}
 	
-	img, _, err := image.Decode(bytes.NewReader(photoData))
+	img, tipe, err := image.Decode(bytes.NewReader(photoData))
+	log.Println("type de l'image", tipe)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Erreur de décodage de l'image"})
 		return
 	}
 	img = addFilligrane(img)
-	var buf bytes.Buffer
-	newId, err := uploadFile(buf)
-	newId, _ = encryptID(newId)
+	newId, err := uploadFile(img)
+	newId, _ = routes.EncryptID(newId)
 
 	idObjectId, err := primitive.ObjectIDFromHex(requestData.Id_individu)
 	collection := Mongoclient.Database("Challenge48h").Collection("Individu")
@@ -204,77 +202,89 @@ func PostPhoto(c *gin.Context) {
 }
 
 func GetPhoto(c *gin.Context) {
-		clientId := c.Param("client_id")
-		if clientId == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Client ID is required"})
-			return
-		}
-		log.Println("clientId reçu :", clientId)  
+	clientId := c.Param("client_id")
+	if clientId == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Client ID is required"})
+		return
+	}
+	log.Println("clientId reçu :", clientId)  
+
+	collection := Mongoclient.Database("Challenge48h").Collection("Individu")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var individu Individu
+	idObjectId, err := primitive.ObjectIDFromHex(clientId)
+	if err != nil {
+		log.Println("Erreur de conversion de l'ID du client :", clientId)  
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID du client invalide"})
+		return
+	}
+
+	err = collection.FindOne(ctx, bson.M{"_id": idObjectId}).Decode(&individu)
+	if err != nil {
+		log.Println("Erreur lors de la recherche de l'individu :", err)  
+		c.JSON(http.StatusNotFound, gin.H{"error": "Client non trouvé"})
+		return
+	}
+
 	
-		collection := Mongoclient.Database("Challenge48h").Collection("Individu")
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
+	log.Println("Individu trouvé :", individu)
+
 	
-		var individu Individu
-		idObjectId, err := primitive.ObjectIDFromHex(clientId)
-		if err != nil {
-			log.Println("Erreur de conversion de l'ID du client :", clientId)  
-			c.JSON(http.StatusBadRequest, gin.H{"error": "ID du client invalide"})
-			return
-		}
+	photoId, err := routes.DecryptID(individu.PhotoID)
+	if err != nil {
+		log.Println("Erreur lors du décryptage de l'ID de la photo :", err)  
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erreur lors du décryptage de l'ID de la photo"})
+		return
+	}
+
+	log.Println("photoId décrypté :", photoId)
 	
-		err = collection.FindOne(ctx, bson.M{"_id": idObjectId}).Decode(&individu)
-		if err != nil {
-			log.Println("Erreur lors de la recherche de l'individu :", err)  
-			c.JSON(http.StatusNotFound, gin.H{"error": "Client non trouvé"})
-			return
-		}
+	objectId, err := primitive.ObjectIDFromHex(photoId)
+	if err != nil {
+		log.Println("Erreur lors de la conversion de l'ID de la photo en ObjectId :", err)  
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "ID de la photo invalide"})
+		return
+	}
+	log.Println("id de la photo", objectId)
 	
+	downloadStream, err := bucket.OpenDownloadStream(objectId)
+	if err != nil {
+		log.Println("Erreur lors du téléchargement de la photo depuis GridFS :", err)  
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erreur lors du téléchargement de la photo"})
+		return
+	}
+	defer downloadStream.Close()
+
+	var photoData bytes.Buffer
+	_, err = photoData.ReadFrom(downloadStream)
+	if err != nil {
 		
-		log.Println("Individu trouvé :", individu)
-	
+		log.Println("Erreur lors de la lecture des données de l'image :", err)  
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erreur lors de la lecture des données de l'image"})
+		return
+	}
+	photo, _ , err := image.Decode(&photoData)
+	if err != nil {
+		log.Println("errer lors de image.Decode", err)
+		return
+	}
+	outfile, err := os.Create("getPhoto.png")
+	if err != nil {
+		log.Println("error lors de la creation de fichier", err)
+		return
+	}
+
+	png.Encode(outfile,photo)
+	outfile.Close()
+
+	var imgBuffer bytes.Buffer
+	c.Header("Content-Type", "image/png")
+	png.Encode(&imgBuffer, photo)
+	c.Data(http.StatusOK, c.GetHeader("Content-Type"), imgBuffer.Bytes())
 		
-		photoId, err := decryptID(individu.PhotoID)
-		if err != nil {
-			log.Println("Erreur lors du décryptage de l'ID de la photo :", err)  
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Erreur lors du décryptage de l'ID de la photo"})
-			return
-		}
-	
-		
-		log.Println("photoId décrypté :", photoId)
-	
-		
-		objectId, err := primitive.ObjectIDFromHex(photoId)
-		if err != nil {
-			log.Println("Erreur lors de la conversion de l'ID de la photo en ObjectId :", err)  
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "ID de la photo invalide"})
-			return
-		}
-		log.Println("id de la photo", objectId)
-		
-		downloadStream, err := bucket.OpenDownloadStream(objectId)
-		if err != nil {
-			log.Println("Erreur lors du téléchargement de la photo depuis GridFS :", err)  
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Erreur lors du téléchargement de la photo"})
-			return
-		}
-		defer downloadStream.Close()
-	
-		var photoData bytes.Buffer
-		_, err = photoData.ReadFrom(downloadStream)
-		if err != nil {
-			log.Println("Erreur lors de la lecture des données de l'image :", err)  
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Erreur lors de la lecture des données de l'image"})
-			return
-		}
-		c.Header("Content-Type", "image/jpeg")
-		c.JSON(http.StatusOK, gin.H{
-			"id_individu": individu.IDIndividu,
-			"photo":       photoData.Bytes(),
-		})
-			
-		log.Println("Image envoyée avec succès.")
+	log.Println("Image envoyée avec succès.")
 }
 
 func addFilligrane(img image.Image) image.Image {
@@ -312,7 +322,9 @@ func addFilligrane(img image.Image) image.Image {
     return context.Image()
 }
 
-func uploadFile(buf bytes.Buffer) (string, error) {
+func uploadFile(img image.Image) (string, error) {
+	var buf bytes.Buffer
+	png.Encode(&buf, img)
 	name := uuid.New().String()
 	uploadStream, _ := bucket.OpenUploadStream(name)
 	defer uploadStream.Close()
@@ -320,23 +332,26 @@ func uploadFile(buf bytes.Buffer) (string, error) {
 	return uploadStream.FileID.(primitive.ObjectID).Hex(), nil
 }
 
-func encryptID(text string) (string, error) {
-	block, _ := aes.NewCipher(encryptionKey)
-	nonce := make([]byte, 12)
-	io.ReadFull(rand.Reader, nonce)
-	aesGCM, _ := cipher.NewGCM(block)
-	ciphertext := aesGCM.Seal(nil, nonce, []byte(text), nil)
-	return base64.StdEncoding.EncodeToString(append(nonce, ciphertext...)), nil
-}
-
-func decryptID(text string) (string, error) {
-	data, _ := base64.StdEncoding.DecodeString(text)
-	nonce := data[:12]
-	ciphertext := data[12:]
-	block, _ := aes.NewCipher(encryptionKey)
-	aesGCM, _ := cipher.NewGCM(block)
-	plainText, _ := aesGCM.Open(nil, nonce, ciphertext, nil)
-	return string(plainText), nil
+func getAllDatabase() {
+	collection := Mongoclient.Database("Challenge48h").Collection("fs.files")
+	log.Println("database : ", collection)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	cursor, _ := collection.Find(ctx, bson.M{})
+	defer cursor.Close(ctx)
+	var files []struct {
+		Id string `bson:"_id"`
+		Length int `bson:"length"`
+		ChunkSize int `bson:"chunkSize"`
+		UploadDate time.Time `bson:"uploadDate"`
+		FileName string `bson:"filename"`
+	}
+	_ = cursor.All(ctx, &files)
+	log.Println(files)
+	for _, file := range files {
+		log.Println("file : ",file)
+	}
+	
 }
 
 func main() {
@@ -349,6 +364,7 @@ func main() {
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 	}))
+	getAllDatabase()
 	router.GET("/getClient", GetClient)
 	router.POST("/postClient", PostClient)
 	router.GET("/getIndividus", GetIndividus)
