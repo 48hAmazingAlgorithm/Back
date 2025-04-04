@@ -2,6 +2,7 @@ package routes
 
 import (
 	"io"
+	"os"
 
 	"crypto/aes"
 	"crypto/rand"
@@ -13,7 +14,7 @@ import (
 )
 
 var err = godotenv.Load()
-var encryptionKey = []byte("0123456789abcdef0123456789abcdef")
+var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))
 
 func EncryptID(text string) (string, error) {
 	block, _ := aes.NewCipher(encryptionKey)
