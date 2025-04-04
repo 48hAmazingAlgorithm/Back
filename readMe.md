@@ -26,24 +26,13 @@ Avant de commencer, assurez-vous d'avoir installé les éléments suivants :
 ### Installation
 Cloner le dépôt :
 
-bash
-Copier
-Modifier
-git clone https://github.com/48hAmazingAlgorithm/Back.git
-Naviguer vers le répertoire du projet :
+`git clone https://github.com/48hAmazingAlgorithm/Back.git`
 
-bash
-Copier
-Modifier
-cd Back
 Installer les dépendances :
 
 Le projet utilise les modules Go. Pour installer les dépendances nécessaires, exécutez :
+`go mod tidy`
 
-bash
-`Copier
-Modifier
-go mod tidy`
 ### Configuration
 Le projet utilise un fichier .env pour gérer les variables d'environnement sensibles. Un fichier .env.dist est fourni comme modèle. Renommez-le en .env et configurez les variables en conséquence :​
 GitHub
