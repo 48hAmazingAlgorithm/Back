@@ -1,10 +1,10 @@
-**API du projet 48hAmazingAlgorithm**
+# API du projet 48hAmazingAlgorithm
 Ce dépôt contient le code source de l'API développée pour le projet 48hAmazingAlgorithm. L'API est construite en Go en utilisant le framework Gin et interagit avec une base de données MongoDB.​
 
-Table des matières
+## Table des matières
 Prérequis
 
-Installation
+### Installation(#installation)
 
 Configuration
 
@@ -25,7 +25,7 @@ Go (version 1.16 ou supérieure)
 
 MongoDB
 
-Installation
+### Installation
 Cloner le dépôt :
 
 bash
