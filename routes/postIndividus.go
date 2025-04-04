@@ -23,7 +23,6 @@ func PostIndividu(c *gin.Context) {
 		})
 		return
 	}
-
 	var existingClient Client
 	err := collectionC.FindOne(ctx, bson.M{"_id": individu.IDIndividu}).Decode(&existingClient)
 	if err != nil {
@@ -32,7 +31,6 @@ func PostIndividu(c *gin.Context) {
 		})
 		return
 	}
-
 	result, err := collection.InsertOne(ctx, individu)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
