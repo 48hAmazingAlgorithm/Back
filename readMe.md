@@ -3,7 +3,7 @@ Ce dépôt contient le code source de l'API développée pour le projet 48hAmazi
 
 ## Table des matières
 
-### [Prérequis](#prérequis)
+### [Prérequis](#Prérequis)
 
 ### [Installation](#installation)
 
@@ -11,9 +11,9 @@ Ce dépôt contient le code source de l'API développée pour le projet 48hAmazi
 
 ### [Utilisation](#utilisation)
 
-### [Structure](#Structure)
+### [Structure](#Structure du projet)
 
-### [Routes](#routes)
+### [Routes](#Routes de l'API)
 
 
 ### Prérequis
