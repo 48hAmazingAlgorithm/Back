@@ -23,7 +23,6 @@ Avant de commencer, assurez-vous d'avoir installé les éléments suivants :
 
 > MongoDB
 
-<a name="Installation"></a>
 ### Installation
 Cloner le dépôt :
 
@@ -37,7 +36,7 @@ Le projet utilise beaucoup de modules Go. Pour installer les dépendances néces
 ```
 go mod tidy
 ```
-<a name="Configuration"></a>
+
 ### Configuration
 Le projet utilise un fichier .env pour gérer les variables d'environnement sensibles.
 Vous devrez également ajouter votre adresse IP sur mongoDB, afin de pouvoir accèder a la base de données. Pour cela, vous pouvez utiliser les identifiants googles situé dans le fichier .env.
@@ -69,5 +68,11 @@ L'API expose plusieurs endpoints pour gérer les ressources. Voici quelques exem
 ```
 /getClients -> récupère les clients
 /getIndividus -> récupère les individus
+/getPhotoVerso/clientId -> récupère la photo verso d'un client
+```
+#### Post
+```
+/postIndividu -> envoie les informations d'un individu
+/postPhotoRecto -> envoie la photo recto
 ```
 
