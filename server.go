@@ -17,12 +17,15 @@ func main() {
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 	}))
+
 	router.GET("/getClient", routes.GetClient)
 	router.POST("/postClient", routes.PostClient)
 	router.GET("/getIndividus", routes.GetIndividus)
 	router.POST("/postIndividu", routes.PostIndividu)
-	router.GET("/getPhoto/:client_id", routes.GetPhoto)
-	router.POST("/postPhoto", routes.PostPhoto)
+	router.GET("/getPhotoRecto/:client_id", routes.GetPhotoRecto)
+	router.GET("/getPhotoVerso/:client_id", routes.GetPhotoVerso)
+	router.POST("/postPhotoRecto", routes.PostPhotoRecto)
+	router.POST("/postPhotoVerso", routes.PostPhotoVerso)
 
 	router.Run(":8080")
 }

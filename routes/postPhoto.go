@@ -17,7 +17,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func PostPhoto(c *gin.Context) {
+func PostPhotoRecto(c *gin.Context) {
 	var requestData struct {
 		Id_individu string `json:"id_individu"`
 		Photo_data string `json:"photo"`
@@ -58,9 +58,62 @@ func PostPhoto(c *gin.Context) {
 		return
 	}
 
-	individu.PhotoID = newId
+	individu.PhotoRectoID = newId
 	individu.DatePhoto = time.Now()
-	result, err := collection.UpdateOne(ctx, bson.M{"_id": idObjectId}, bson.M{"$set": bson.M{"photo_id": individu.PhotoID,"date_photo": individu.DatePhoto,}})
+	result, err := collection.UpdateOne(ctx, bson.M{"_id": idObjectId}, bson.M{"$set": bson.M{"photoRecto_id": individu.PhotoRectoID,"date_photo": individu.DatePhoto,}})
+	if err != nil {
+		log.Fatal("probleme lors de l'update", err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"message": result,
+	})
+}
+
+func PostPhotoVerso(c *gin.Context) {
+	var requestData struct {
+		Id_individu string `json:"id_individu"`
+		Photo_data string `json:"photo"`
+	}
+	if err := c.ShouldBindJSON(&requestData); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Données invalides",
+		})
+		return
+	}
+	photoData, err := base64.StdEncoding.DecodeString(requestData.Photo_data)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Erreur de décodage de l'image"})
+		return
+	}
+	
+	img, tipe, err := image.Decode(bytes.NewReader(photoData))
+	log.Println("type de l'image", tipe)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Erreur de décodage de l'image"})
+		return
+	}
+	img = addFilligrane(img)
+	newId, err := uploadFile(img)
+	newId, _ = EncryptID(newId)
+
+	idObjectId, err := primitive.ObjectIDFromHex(requestData.Id_individu)
+	collection := Mongoclient.Database("Challenge48h").Collection("Individu")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var individu Individu
+	err = collection.FindOne(ctx, bson.M{"_id": idObjectId}).Decode(&individu)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "L'individu n'existe pas",
+		})
+		return
+	}
+
+	individu.PhotoVersoID = newId
+	individu.DatePhoto = time.Now()
+	result, err := collection.UpdateOne(ctx, bson.M{"_id": idObjectId}, bson.M{"$set": bson.M{"photoVerso_id": individu.PhotoVersoID,"date_photo": individu.DatePhoto,}})
 	if err != nil {
 		log.Fatal("probleme lors de l'update", err)
 		return

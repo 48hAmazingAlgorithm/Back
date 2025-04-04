@@ -20,7 +20,8 @@ type Individu struct {
 	DateNaissance      time.Time `bson:"date_naissance" json:"date_naissance"`
 	DateFinValiditeCNI time.Time `bson:"date_fin_validite_CNI" json:"date_fin_validite_CNI"`
 	NumeroCNI          string    `bson:"numero_CNI" json:"numero_CNI"`
-	PhotoID            string    `bson:"photo_id"`
+	PhotoRectoID            string    `bson:"photoRecto_id"`
+	PhotoVersoID		string		`bson:"photoVerso_id"`
 	DatePhoto          time.Time `bson:"date_photo"`
 }
 
