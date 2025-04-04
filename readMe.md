@@ -41,10 +41,10 @@ Installer les dépendances :
 Le projet utilise les modules Go. Pour installer les dépendances nécessaires, exécutez :
 
 bash
-Copier
+`Copier
 Modifier
-go mod tidy
-Configuration
+go mod tidy`
+### Configuration
 Le projet utilise un fichier .env pour gérer les variables d'environnement sensibles. Un fichier .env.dist est fourni comme modèle. Renommez-le en .env et configurez les variables en conséquence :​
 GitHub
 +1
