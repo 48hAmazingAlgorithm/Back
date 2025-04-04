@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,15 +12,19 @@
       margin: 0 auto;
       padding: 2rem;
     }
+
     label {
       display: block;
       margin-top: 1rem;
     }
-    input, button {
+
+    input,
+    button {
       width: 100%;
       padding: 0.5rem;
       margin-top: 0.5rem;
     }
+
     .upload-container {
       width: 100%;
       height: 200px;
@@ -33,6 +38,7 @@
       text-align: center;
       margin-top: 1rem;
     }
+
     .upload-container img {
       width: 100%;
       height: 100%;
@@ -42,16 +48,18 @@
       top: 0;
       left: 0;
     }
+
     .upload-container input[type="file"] {
       display: none;
     }
   </style>
 </head>
+
 <body>
 
   <h1>Ajouter un Individu</h1>
 
-  <form action="http://localhost:8080/upload-cni-gridfs" method="POST" enctype="multipart/form-data">
+  <form id="individuForm">
     <label for="nom">Nom :</label>
     <input type="text" id="nom" name="nom" required>
 
@@ -67,34 +75,94 @@
     <label for="numero_CNI">Numéro de CNI :</label>
     <input type="text" id="numero_CNI" name="numero_CNI" required>
 
-    <label for="numero_client">Numéro de client :</label>
-    <input type="text" id="numero_client" name="numero_client" required>
-
     <label for="date_photo">Date de la photo :</label>
-    <input type="date" id="date_photo" name="date_photo" required>
+    <input type="date" id="date_photo" name="date_photo">
 
-    <label class="upload-container" for="scan_cni">
-      Cliquez pour insérer une image
-      <img id="preview" src="#" alt="Aperçu de l'image">
-      <input type="file" id="scan_cni" name="scan_cni" accept="image/*" onchange="previewImage(event)" required>
-    </label>
+    <label for="photo">Photo :</label>
+    <input type="file" id="photo" name="photo" accept="image/*" required>
 
     <button type="submit">Enregistrer l'individu</button>
   </form>
 
   <script>
-    function previewImage(event) {
-      const file = event.target.files[0];
+    // Fonction pour envoyer les données de l'individu (sans la photo)
+    async function submitIndividuForm(event) {
+      event.preventDefault();
+
+      const form = document.getElementById('individuForm');
+      const formData = new FormData(form);
+
+      const individuData = {
+        nom: formData.get('nom'),
+        prenom: formData.get('prenom'),
+        date_naissance: formData.get('date_naissance'),
+        date_fin_validite_CNI: formData.get('date_fin_validite_CNI'),
+        numero_CNI: formData.get('numero_CNI'),
+      };
+
+      // Convertir les dates en format ISO
+      individuData.date_naissance = new Date(individuData.date_naissance).toISOString();
+      individuData.date_fin_validite_CNI = new Date(individuData.date_fin_validite_CNI).toISOString();
+
+      // Envoi des données de l'individu (sans la photo)
+      const response = await fetch('http://localhost:8080/postIndividu', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(individuData),
+      });
+
+      if (!response.ok) {
+        console.error('Erreur lors de l\'enregistrement de l\'individu');
+        return;
+      }
+
+      const data = await response.json();
+      console.log(data)
+      const individuId = data.message;
+
+      // Une fois l'ID récupéré, envoyer la photo
+      sendPhoto(individuId);
+    }
+
+    // Fonction pour envoyer la photo de l'individu
+    async function sendPhoto(individuId) {
+      const form = document.getElementById('individuForm');
+      const formData = new FormData(form);
+
+      const file = formData.get('scan_cni');
       if (file) {
         const reader = new FileReader();
-        reader.onload = function(e) {
-          const imgElement = document.getElementById('preview');
-          imgElement.src = e.target.result;
-          imgElement.style.display = "block";
-        }
+        reader.onloadend = async () => {
+          const photoBase64 = reader.result.split(',')[1]; // Retirer le préfixe "data:image/*;base64,"
+
+          // Envoi de la photo avec l'ID de l'individu
+          const response = await fetch('http://localhost:8080/postPhoto', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              id_individu: individuId,
+              photo: photoBase64,
+            }),
+          });
+
+          if (response.ok) {
+            console.log('Photo envoyée avec succès');
+          } else {
+            console.error('Erreur lors de l\'envoi de la photo');
+          }
+        };
         reader.readAsDataURL(file);
       }
     }
+
+    // Ajouter un écouteur d'événement pour l'envoi du formulaire
+    document.getElementById('individuForm').addEventListener('submit', submitIndividuForm);
   </script>
+
 </body>
+
 </html>
