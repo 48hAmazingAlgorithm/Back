@@ -62,7 +62,7 @@ Back/
 ```
 
 ### Routes
-L'API expose plusieurs endpoints pour gérer les ressources. Voici quelques exemples :​
+L'API expose plusieurs endpoints pour gérer les ressources. Pour plus d'informations, aller dans le fichier server.go pour voir toutes les routes. Voici quelques exemples :​
 
 ### Get 
 ```
